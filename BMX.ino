@@ -11,7 +11,10 @@
 #include <SPI.h>
 #include <SD.h>
 
-const int chipSelect = 4;
+#define chipSelect 4
+
+//#define SERIAL_LOG
+//#define SD_LOG
 
 //---------------------
 //IMU
@@ -26,9 +29,12 @@ bool updateSensorData = true;         //Flag to update the sensor data. Default 
 
 void setup() //This code is executed once
 {
-  //init IMU
-  //Peripheral Initialization
+  
+  #ifdef SERIAL_LOG
   Serial.begin(9600);           //Initialize the Serial Port to view information on the Serial Monitor
+  #endif //SERIAL_LOG
+
+  //init IMU
   I2C.begin();                    //Initialize I2C communication to the let the library communicate with the sensor. 
   //Sensor Initialization
   mySensor.initSensor();          //The I2C Address can be changed here inside this function in the library
@@ -37,6 +43,8 @@ void setup() //This code is executed once
   //Setting to MANUAL requires lesser reads to the sensor
   mySensor.updateAccelConfig();
   updateSensorData = true;
+
+  #ifdef SERIAL_LOG
   Serial.println();
   Serial.println("Default accelerometer configuration settings...");
   Serial.print("Range: ");
@@ -45,24 +53,37 @@ void setup() //This code is executed once
   Serial.println(mySensor.readAccelBandwidth());
   Serial.print("Power Mode: ");
   Serial.println(mySensor.readAccelPowerMode());
-  
+ 
   Serial.print("Initializing SD card...");
+  #endif //SERIAL_LOG
 
+  #ifdef SD_LOG
   // see if the card is present and can be initialized:
   if (!SD.begin(chipSelect)) {
+    #ifdef SERIAL_LOG
     Serial.println("Card failed, or not present");
+    #endif //SERIAL_LOG
     // don't do anything more:
     return;
   }
+  #ifdef SERIAL_LOG
   Serial.println("card initialized.");
-    
-  Serial.println("Streaming in ..."); //Countdown
-  Serial.print("3...");
-  delay(1000);  //Wait for a second
-  Serial.print("2...");
-  delay(1000);  //Wait for a second
-  Serial.println("1...");
-  delay(1000);  //Wait for a second
+  Serial.println("initialize log file to SD card...");
+  #endif //SERIAL_LOG
+
+  String csvHeader = "Timestamp[ms],AccX[m/s2],AccY[m/s2],AccZ[m/s2]\n";
+  File dataFile = SD.open("datalog.txt", FILE_WRITE);
+  if (dataFile) {
+    dataFile.println(csvHeader);
+    dataFile.close();
+  }
+  // if the file isn't open, pop up an error:
+  else {
+    #ifdef SERIAL_LOG
+    Serial.println("error opening datalog.txt");
+    #endif //SERIAL_LOG
+  }
+  #endif //SD_LOG
 }
 
 void loop() //This code is looped forever
@@ -83,6 +104,7 @@ void loop() //This code is looped forever
     float Ay = mySensor.readAccelY();
     float Az = mySensor.readAccelZ();
 
+    #ifdef SERIAL_LOG
     Serial.print("Time: ");
     Serial.print(lastStreamTime);
     Serial.print("ms ");
@@ -127,29 +149,34 @@ void loop() //This code is looped forever
     Serial.print(mySensor.readAccelCalibStatus());  //Accelerometer Calibration Status (0 - 3)
 
     Serial.println();
+    #endif //SERIAL_LOG
 
-        //log some data to SD card in csv
-    String dataString = "AccX,AccY,AccZ";
+    //log data to SD card in csv
+    String dataString = "";
+    dataString += String(lastStreamTime);
+    dataString += ",";
     dataString += String(Ax);
     dataString += ",";
     dataString += String(Ay);
     dataString += ",";
     dataString += String(Az);
+    dataString += "\n";
 
-  // open the file. note that only one file can be open at a time,
+    // open the file. note that only one file can be open at a time,
+    #ifdef SD_LOG
     File dataFile = SD.open("datalog.txt", FILE_WRITE);
      // if the file is available, write to it:
-  if (dataFile) {
-    dataFile.println(dataString);
-    dataFile.close();
-    // print to the serial port too:
-    Serial.println(dataString);
-  }
-  // if the file isn't open, pop up an error:
-  else {
-    Serial.println("error opening datalog.txt");
-  }
-
+    if (dataFile) {
+      dataFile.println(dataString);
+      dataFile.close();
+    }
+    // if the file isn't open, pop up an error:
+    else {
+      #ifdef SERIAL_LOG
+      Serial.println("error opening datalog.txt");
+      #endif //SERIAL_LOG     
+    }
+    #endif //SD_LOG
 
     updateSensorData = true;
   }
