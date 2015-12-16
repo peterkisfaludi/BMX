@@ -13,8 +13,8 @@
 
 #define chipSelect 4
 
-//#define SERIAL_LOG
-//#define SD_LOG
+#define SERIAL_LOG
+#define SD_LOG
 
 //---------------------
 //IMU
@@ -64,14 +64,14 @@ void setup() //This code is executed once
     Serial.println("Card failed, or not present");
     #endif //SERIAL_LOG
     // don't do anything more:
-    return;
+    while(1);
   }
   #ifdef SERIAL_LOG
   Serial.println("card initialized.");
   Serial.println("initialize log file to SD card...");
   #endif //SERIAL_LOG
 
-  String csvHeader = "Timestamp[ms],AccX[m/s2],AccY[m/s2],AccZ[m/s2]\n";
+  String csvHeader = "Timestamp[ms],AccX[m/s2],AccY[m/s2],AccZ[m/s2]";
   File dataFile = SD.open("datalog.txt", FILE_WRITE);
   if (dataFile) {
     dataFile.println(csvHeader);
@@ -160,7 +160,6 @@ void loop() //This code is looped forever
     dataString += String(Ay);
     dataString += ",";
     dataString += String(Az);
-    dataString += "\n";
 
     // open the file. note that only one file can be open at a time,
     #ifdef SD_LOG
